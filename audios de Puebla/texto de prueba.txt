@@ -1,0 +1,15 @@
+Ficha 1
+This is my project on the Dimetrodon. Honestly, my creativity went wild and I ended up creating a dinosaur racing video game. Everything is inspired by the Dimetrodon: its sail, its tail fin, and a 3D6 Tesla magnetic motor installed in its stomach.
+
+Ficha 2
+Using simple code, I designed every vehicle, map, track, and game interface from scratch. I programmed specific movements for the W, A, S, and D keys, the space bar, and the nitro boost.
+
+Ficha 3
+After that, I focused on a second game just cars, using the same concept, but with better graphics and more dedication. I optimized it to be playable on the Number console without needing heavy graphics.
+
+Ficha 4
+My goal was an open-world, racing, and multiplayer game with infinite content. Inspired by Minecraft, the map loads randomly as the player moves forward, featuring NPCs both people and cars.
+
+Ficha 5
+It also includes a 3D garage and a shop with more than five detailed car models. Here on the screen, you can see both video games in action. Finally, I also created a dedicated website and a profile page for the Dimetrodon. Thank you!
+
