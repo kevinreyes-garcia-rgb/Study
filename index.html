@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAO Study Hub | Centro de Estudio Multimedia</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        kirito: {
+                            bg: '#090d16',
+                            surface: '#111827',
+                            card: '#1a2234',
+                            border: '#2a364f',
+                            accent: '#00e5ff',
+                            accentHover: '#00b8d4',
+                            purple: '#8b5cf6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Personalización de barras de desplazamiento */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a364f; 
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00e5ff; 
+        }
+
+        /* Animación de ondas de audio */
+        @keyframes pulse-bar {
+            0%, 100% { transform: scaleY(0.3); }
+            50% { transform: scaleY(1); }
+        }
+        .audio-bar {
+            animation: pulse-bar 1.2s ease-in-out infinite;
+            transform-origin: bottom;
+        }
+        .paused .audio-bar {
+            animation-play-state: paused;
+            transform: scaleY(0.2);
+        }
+    </style>
+</head>
+<body class="bg-kirito-bg text-slate-200 font-sans min-h-screen flex flex-col selection:bg-kirito-accent selection:text-kirito-bg">
+
+    <!-- Notificación Toast Flotante (Reemplazo seguro de alert) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Cabecera Principal -->
+    <header class="bg-kirito-surface/90 backdrop-blur-md border-b border-kirito-border sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Logo y Título -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-kirito-accent to-blue-600 flex items-center justify-center shadow-lg shadow-kirito-accent/20">
+                    <i class="fa-solid fa-sword text-kirito-bg text-lg transform -rotate-45"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Study<span class="text-kirito-accent">Link</span>
+                        <span class="hidden sm:inline-block text-[10px] uppercase tracking-widest bg-kirito-card border border-kirito-border px-2 py-0.5 rounded-full text-slate-400">v2.0</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Organizador Secuencial de Estudio</p>
+                </div>
+            </div>
+
+            <!-- Barra de Progreso Global -->
+            <div class="flex-1 max-w-xs mx-4 hidden md:block">
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-400 font-medium">Progreso de Estudio</span>
+                    <span id="progress-text" class="text-kirito-accent font-mono font-semibold">0% (0/0)</span>
+                </div>
+                <div class="w-full bg-kirito-bg rounded-full h-2 border border-kirito-border overflow-hidden">
+                    <div id="progress-bar" class="bg-gradient-to-r from-kirito-accent to-purple-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Crédito Principal y Acción -->
+            <div class="flex items-center gap-3">
+                <div class="px-3 py-1.5 rounded-xl bg-kirito-card border border-kirito-accent/30 flex items-center gap-2 shadow-inner">
+                    <span class="w-2 h-2 rounded-full bg-kirito-accent animate-pulse"></span>
+                    <span class="text-xs sm:text-sm font-medium text-slate-200">Creado por <strong class="text-kirito-accent tracking-wide">Kirito</strong></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Columna Izquierda: Carga y Lista Ordenada de Temas (4 columnas en desktop) -->
+        <aside class="lg:col-span-4 flex flex-col gap-5">
+            
+            <!-- Zona de Carga / Drag & Drop -->
+            <div id="drop-zone" class="bg-kirito-surface border-2 border-dashed border-kirito-border hover:border-kirito-accent rounded-2xl p-5 text-center transition-all cursor-pointer group relative overflow-hidden">
+                <input type="file" id="file-input" multiple accept=".mp3,.mp4,.txt,audio/mpeg,video/mp4,text/plain" class="hidden">
+                
+                <div class="w-12 h-12 rounded-2xl bg-kirito-card border border-kirito-border group-hover:border-kirito-accent/50 group-hover:scale-105 transition-all mx-auto flex items-center justify-center mb-3 text-kirito-accent">
+                    <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                </div>
+                <h2 class="text-sm font-semibold text-white mb-1">Agregar Material de Estudio</h2>
+                <p class="text-xs text-slate-400 mb-3">Arrastra archivos aquí o haz clic para seleccionar</p>
+                <div class="flex justify-center gap-2 text-[11px] font-mono">
+                    <span class="px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">.MP4</span>
+                    <span class="px-2 py-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">.MP3</span>
+                    <span class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">.TXT</span>
+                </div>
+            </div>
+
+            <!-- Lista de Temas Ordenados -->
+            <div class="bg-kirito-surface border border-kirito-border rounded-2xl flex flex-col flex-1 min-h-[380px] max-h-[650px] shadow-xl">
+                <div class="p-4 border-b border-kirito-border flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-list-ol text-kirito-accent"></i>
+                        <h3 class="font-semibold text-sm text-white">Ruta de Estudio</h3>
+                        <span id="topic-count" class="text-xs bg-kirito-card px-2 py-0.5 rounded-full text-slate-400 font-mono">0</span>
+                    </div>
+                    <button id="clear-all-btn" title="Limpiar lista" class="text-xs text-slate-400 hover:text-rose-400 transition-colors hidden">
+                        <i class="fa-solid fa-trash-can mr-1"></i>Vaciar
+                    </button>
+                </div>
+
+                <!-- Contenedor Scrolleable de Temas -->
+                <div id="playlist-container" class="flex-1 overflow-y-auto p-3 space-y-2">
+                    <!-- Estado vacío inicial -->
+                    <div id="empty-playlist" class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
+                        <i class="fa-regular fa-folder-open text-3xl mb-3 opacity-50"></i>
+                        <p class="text-sm font-medium text-slate-400">Tu lista está vacía</p>
+                        <p class="text-xs mt-1">Los archivos se ordenarán automáticamente en el orden exacto en que los subas.</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Columna Derecha: Visor de Estudio y Bloc de Notas (8 columnas en desktop) -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- Panel Principal de Visualización -->
+            <div class="bg-kirito-surface border border-kirito-border rounded-2xl overflow-hidden shadow-xl flex flex-col">
+                
+                <!-- Barra Superior del Visor -->
+                <div class="p-4 bg-kirito-card/50 border-b border-kirito-border flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span id="current-badge" class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-kirito-accent/10 text-kirito-accent border border-kirito-accent/30 shrink-0">
+                            ESPERANDO
+                        </span>
+                        <h2 id="current-title" class="text-base sm:text-lg font-semibold text-white truncate">
+                            Selecciona o sube un archivo para comenzar
+                        </h2>
+                    </div>
+
+                    <!-- Botón Marcar como Estudiado -->
+                    <button id="toggle-complete-btn" disabled class="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-kirito-card text-slate-500 border border-kirito-border cursor-not-allowed">
+                        <i class="fa-regular fa-circle-check text-sm"></i>
+                        <span>Marcar como Estudiado</span>
+                    </button>
+                </div>
+
+                <!-- Área de Contenido Dinámico (Video, Audio, Texto o Bienvenida) -->
+                <div id="viewer-stage" class="min-h-[340px] sm:min-h-[420px] flex flex-col justify-center items-center bg-kirito-bg/60 relative p-4 sm:p-6">
+                    
+                    <!-- Pantalla de Bienvenida -->
+                    <div id="welcome-screen" class="text-center max-w-md mx-auto py-8">
+                        <div class="w-16 h-16 rounded-2xl bg-kirito-card border border-kirito-border flex items-center justify-center mx-auto mb-4 text-kirito-accent shadow-lg">
+                            <i class="fa-solid fa-graduation-cap text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">Bienvenido a tu Espacio de Estudio</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed mb-4">
+                            Sube tus videos (<span class="text-blue-400 font-mono">.mp4</span>), audios (<span class="text-purple-400 font-mono">.mp3</span>) o apuntes (<span class="text-emerald-400 font-mono">.txt</span>). La plataforma respetará el orden en que los agregues para guiarte paso a paso.
+                        </p>
+                        <button onclick="document.getElementById('file-input').click()" class="px-5 py-2.5 rounded-xl bg-kirito-accent hover:bg-kirito-accentHover text-kirito-bg font-semibold text-sm transition-all shadow-lg shadow-kirito-accent/20">
+                            <i class="fa-solid fa-plus mr-2"></i>Subir Primeros Archivos
+                        </button>
+                    </div>
+
+                    <!-- Reproductor de Video (.mp4) -->
+                    <div id="video-wrapper" class="hidden w-full flex-col gap-3">
+                        <div class="w-full rounded-xl overflow-hidden bg-black border border-kirito-border shadow-2xl aspect-video flex items-center justify-center">
+                            <video id="video-player" controls class="w-full h-full max-h-[500px]"></video>
+                        </div>
+                        <!-- Controles de Velocidad para Video -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 bg-kirito-card p-3 rounded-xl border border-kirito-border">
+                            <span class="text-xs text-slate-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-gauge-high text-kirito-accent"></i> Velocidad de reproducción:
+                            </span>
+                            <div class="flex gap-1.5" id="video-speed-controls">
+                                <button data-speed="1" class="speed-btn active px-2.5 py-1 rounded-lg text-xs font-mono bg-kirito-accent text-kirito-bg font-bold">1x</button>
+                                <button data-speed="1.25" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-mono bg-kirito-surface hover:bg-kirito-border text-slate-300">1.25x</button>
+                                <button data-speed="1.5" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-mono bg-kirito-surface hover:bg-kirito-border text-slate-300">1.5x</button>
+                                <button data-speed="2" class="speed-btn px-2.5 py-1 rounded-lg text-xs font-mono bg-kirito-surface hover:bg-kirito-border text-slate-300">2x</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reproductor de Audio (.mp3) -->
+                    <div id="audio-wrapper" class="hidden w-full max-w-xl mx-auto flex-col items-center gap-6 py-6">
+                        <!-- Visualizador Animado -->
+                        <div id="audio-visualizer" class="paused w-36 h-36 rounded-3xl bg-gradient-to-br from-kirito-card to-kirito-surface border border-kirito-accent/30 flex items-end justify-center gap-1.5 p-6 shadow-2xl shadow-purple-500/10">
+                            <div class="audio-bar w-2 bg-kirito-accent rounded-full h-16" style="animation-delay: 0.1s"></div>
+                            <div class="audio-bar w-2 bg-purple-400 rounded-full h-24" style="animation-delay: 0.3s"></div>
+                            <div class="audio-bar w-2 bg-kirito-accent rounded-full h-20" style="animation-delay: 0.0s"></div>
+                            <div class="audio-bar w-2 bg-blue-400 rounded-full h-28" style="animation-delay: 0.4s"></div>
+                            <div class="audio-bar w-2 bg-kirito-accent rounded-full h-14" style="animation-delay: 0.2s"></div>
+                            <div class="audio-bar w-2 bg-purple-400 rounded-full h-22" style="animation-delay: 0.5s"></div>
+                        </div>
+
+                        <div class="text-center">
+                            <span class="text-xs font-mono uppercase tracking-wider text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">Pista de Audio</span>
+                            <h4 id="audio-filename-display" class="text-base font-semibold text-white mt-2">Archivo.mp3</h4>
+                        </div>
+
+                        <audio id="audio-player" controls class="w-full rounded-xl"></audio>
+
+                        <!-- Controles de Velocidad para Audio -->
+                        <div class="w-full flex flex-wrap items-center justify-between gap-2 bg-kirito-card p-3 rounded-xl border border-kirito-border">
+                            <span class="text-xs text-slate-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-gauge-high text-purple-400"></i> Velocidad de audio:
+                            </span>
+                            <div class="flex gap-1.5" id="audio-speed-controls">
+                                <button data-speed="1" class="audio-speed-btn active px-2.5 py-1 rounded-lg text-xs font-mono bg-purple-500 text-white font-bold">1x</button>
+                                <button data-speed="1.25" class="audio-speed-btn px-2.5 py-1 rounded-lg text-xs font-mono bg-kirito-surface hover:bg-kirito-border text-slate-300">1.25x</button>
+                                <button data-speed="1.5" class="audio-speed-btn px-2.5 py-1 rounded-lg text-xs font-mono bg-kirito-surface hover:bg-kirito-border text-slate-300">1.5x</button>
+                                <button data-speed="2" class="audio-speed-btn px-2.5 py-1 rounded-lg text-xs font-mono bg-kirito-surface hover:bg-kirito-border text-slate-300">2x</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lector de Texto (.txt) -->
+                    <div id="text-wrapper" class="hidden w-full flex-col gap-3">
+                        <!-- Barra de Herramientas de Lectura -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 bg-kirito-card px-4 py-2.5 rounded-xl border border-kirito-border">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-book-open text-emerald-400 text-sm"></i>
+                                <span class="text-xs font-medium text-slate-300">Modo Lectura</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-400">Tamaño:</span>
+                                <button id="font-decrease" class="w-7 h-7 rounded-lg bg-kirito-surface hover:bg-kirito-border text-slate-200 text-xs font-bold border border-kirito-border" title="Reducir letra">A-</button>
+                                <button id="font-increase" class="w-7 h-7 rounded-lg bg-kirito-surface hover:bg-kirito-border text-slate-200 text-xs font-bold border border-kirito-border" title="Aumentar letra">A+</button>
+                                <button id="sepia-toggle" class="px-2.5 h-7 rounded-lg bg-kirito-surface hover:bg-kirito-border text-amber-200/90 text-xs border border-kirito-border ml-1" title="Alternar fondo cálido">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Contenido del Archivo TXT -->
+                        <div id="text-content-box" class="w-full h-[380px] overflow-y-auto p-6 rounded-xl bg-[#0d1320] border border-kirito-border text-slate-200 leading-relaxed whitespace-pre-wrap font-sans text-base transition-colors">
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Barra de Navegación Inferior (Anterior / Siguiente Tema) -->
+                <div class="p-4 bg-kirito-card/40 border-t border-kirito-border flex items-center justify-between gap-4">
+                    <button id="prev-btn" disabled class="px-4 py-2.5 rounded-xl bg-kirito-card border border-kirito-border text-slate-400 text-xs sm:text-sm font-medium flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:border-kirito-accent hover:enabled:text-white transition-all">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>Tema Anterior</span>
+                    </button>
+
+                    <span id="step-indicator" class="text-xs font-mono text-slate-400">0 / 0</span>
+
+                    <button id="next-btn" disabled class="px-4 py-2.5 rounded-xl bg-kirito-accent text-kirito-bg text-xs sm:text-sm font-semibold flex items-center gap-2 disabled:opacity-40 disabled:bg-kirito-card disabled:text-slate-500 disabled:cursor-not-allowed hover:enabled:bg-kirito-accentHover transition-all shadow-lg shadow-kirito-accent/10">
+                        <span>Siguiente Tema</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bloc de Notas Rápido para Estudiar -->
+            <div class="bg-kirito-surface border border-kirito-border rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                            <i class="fa-solid fa-pen-nib text-sm"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">Bloc de Notas de Estudio</h3>
+                            <p class="text-[11px] text-slate-400">Toma apuntes rápidos mientras revisas tus archivos</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="copy-notes-btn" class="px-3 py-1.5 rounded-xl bg-kirito-card hover:bg-kirito-border border border-kirito-border text-xs text-slate-300 flex items-center gap-1.5 transition-colors">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copiar</span>
+                        </button>
+                        <button id="download-notes-btn" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs text-emerald-400 font-medium flex items-center gap-1.5 transition-colors">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Descargar .txt</span>
+                        </button>
+                    </div>
+                </div>
+
+                <textarea id="study-notes" rows="4" placeholder="Escribe aquí tus resúmenes, ideas clave o marcas de tiempo..." class="w-full bg-kirito-bg border border-kirito-border focus:border-kirito-accent focus:outline-none rounded-xl p-3.5 text-sm text-slate-200 placeholder-slate-500 resize-y leading-relaxed"></textarea>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Pie de Página con Créditos -->
+    <footer class="bg-kirito-surface border-t border-kirito-border py-5 mt-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+            <p>Plataforma de Estudio Secuencial • 100% Privado (tus archivos se procesan localmente en tu navegador)</p>
+            <p class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-code text-kirito-accent"></i>
+                <span>Creado por <strong class="text-kirito-accent font-bold tracking-wide">Kirito</strong></span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Lógica JavaScript de la Aplicación -->
+    <script>
+        /**
+         * Estado principal de la aplicación
+         * Guarda los archivos exactamente en el orden en que son agregados
+         */
+        const state = {
+            items: [], // Array de objetos: { id, name, type, ext, file, url, textContent, completed }
+            currentIndex: -1,
+            fontSize: 16,
+            warmReadingMode: false
+        };
+
+        // Referencias a elementos del DOM
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const playlistContainer = document.getElementById('playlist-container');
+        const emptyPlaylist = document.getElementById('empty-playlist');
+        const topicCount = document.getElementById('topic-count');
+        const clearAllBtn = document.getElementById('clear-all-btn');
+
+        // Visor
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const videoWrapper = document.getElementById('video-wrapper');
+        const videoPlayer = document.getElementById('video-player');
+        const audioWrapper = document.getElementById('audio-wrapper');
+        const audioPlayer = document.getElementById('audio-player');
+        const audioVisualizer = document.getElementById('audio-visualizer');
+        const audioFilenameDisplay = document.getElementById('audio-filename-display');
+        const textWrapper = document.getElementById('text-wrapper');
+        const textContentBox = document.getElementById('text-content-box');
+
+        // Cabecera y Controles del Visor
+        const currentBadge = document.getElementById('current-badge');
+        const currentTitle = document.getElementById('current-title');
+        const toggleCompleteBtn = document.getElementById('toggle-complete-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const stepIndicator = document.getElementById('step-indicator');
+
+        // Progreso
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+
+        // Notas
+        const studyNotes = document.getElementById('study-notes');
+        const copyNotesBtn = document.getElementById('copy-notes-btn');
+        const downloadNotesBtn = document.getElementById('download-notes-btn');
+
+        /**
+         * Muestra notificaciones elegantes sin usar alert()
+         */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                info: 'border-kirito-accent/50 bg-kirito-card text-white',
+                success: 'border-emerald-500/50 bg-kirito-card text-emerald-300',
+                error: 'border-rose-500/50 bg-kirito-card text-rose-300'
+            };
+
+            const icons = {
+                info: 'fa-circle-info text-kirito-accent',
+                success: 'fa-circle-check text-emerald-400',
+                error: 'fa-triangle-exclamation text-rose-400'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl text-xs sm:text-sm font-medium transform transition-all duration-300 translate-y-4 opacity-0 ${colors[type]}`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type]}"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /**
+         * Procesa los archivos subidos manteniendo estrictamente el orden de selección/carga
+         */
+        async function handleFiles(fileList) {
+            const validFiles = Array.from(fileList).filter(file => {
+                const name = file.name.toLowerCase();
+                return name.endsWith('.mp3') || name.endsWith('.mp4') || name.endsWith('.txt');
+            });
+
+            if (validFiles.length === 0) {
+                showToast('Por favor selecciona archivos .mp3, .mp4 o .txt válidos.', 'error');
+                return;
+            }
+
+            const wasEmpty = state.items.length === 0;
+
+            for (const file of validFiles) {
+                const lowerName = file.name.toLowerCase();
+                let ext = 'txt';
+                if (lowerName.endsWith('.mp4')) ext = 'mp4';
+                else if (lowerName.endsWith('.mp3')) ext = 'mp3';
+
+                const item = {
+                    id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random().toString(36),
+                    name: file.name,
+                    ext: ext,
+                    file: file,
+                    url: ext !== 'txt' ? URL.createObjectURL(file) : null,
+                    textContent: null,
+                    completed: false
+                };
+
+                // Si es archivo de texto, leemos su contenido con UTF-8
+                if (ext === 'txt') {
+                    try {
+                        item.textContent = await file.text();
+                    } catch (err) {
+                        item.textContent = 'Error al leer el archivo de texto.';
+                    }
+                }
+
+                state.items.push(item);
+            }
+
+            showToast(`Se agregaron ${validFiles.length} archivo(s) a tu ruta de estudio.`, 'success');
+            renderPlaylist();
+            updateProgress();
+
+            // Si la lista estaba vacía, abrir automáticamente el Tema 1
+            if (wasEmpty && state.items.length > 0) {
+                selectTopic(0);
+            } else {
+                updateNavigationButtons();
+            }
+        }
+
+        /**
+         * Renderiza la lista numerada de temas (Tema 1, Tema 2, etc.)
+         */
+        function renderPlaylist() {
+            topicCount.textContent = state.items.length;
+
+            if (state.items.length === 0) {
+                playlistContainer.innerHTML = '';
+                playlistContainer.appendChild(emptyPlaylist);
+                emptyPlaylist.classList.remove('hidden');
+                clearAllBtn.classList.add('hidden');
+                return;
+            }
+
+            clearAllBtn.classList.remove('hidden');
+            playlistContainer.innerHTML = '';
+
+            state.items.forEach((item, index) => {
+                const isActive = index === state.currentIndex;
+                
+                // Configuración visual según extensión
+                const badgeConfig = {
+                    mp4: { icon: 'fa-video', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', label: 'MP4' },
+                    mp3: { icon: 'fa-headphones', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20', label: 'MP3' },
+                    txt: { icon: 'fa-file-lines', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', label: 'TXT' }
+                }[item.ext];
+
+                const card = document.createElement('div');
+                card.className = `group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    isActive 
+                    ? 'bg-kirito-card border-kirito-accent shadow-md shadow-kirito-accent/10' 
+                    : 'bg-kirito-bg/60 border-kirito-border hover:border-slate-600'
+                }`;
+
+                card.onclick = (e) => {
+                    // Evitar selección si se hizo clic en botones de acción
+                    if (e.target.closest('button')) return;
+                    selectTopic(index);
+                };
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <!-- Número de Orden / Check de Completado -->
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-mono font-bold shrink-0 ${
+                            item.completed 
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
+                            : isActive 
+                                ? 'bg-kirito-accent text-kirito-bg' 
+                                : 'bg-kirito-surface text-slate-400 border border-kirito-border'
+                        }">
+                            ${item.completed ? '<i class="fa-solid fa-check"></i>' : (index + 1)}
+                        </div>
+
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5 mb-0.5">
+                                <span class="text-[10px] font-mono uppercase font-semibold tracking-wider ${isActive ? 'text-kirito-accent' : 'text-slate-400'}">
+                                    Tema ${index + 1}
+                                </span>
+                                <span class="text-[10px] px-1.5 py-0.2 rounded border font-mono ${badgeConfig.color}">
+                                    ${badgeConfig.label}
+                                </span>
+                            </div>
+                            <p class="text-xs sm:text-sm font-medium truncate ${item.completed ? 'text-slate-400 line-through' : 'text-slate-200'}" title="${item.name}">
+                                ${item.name}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Controles para reordenar o eliminar -->
+                    <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                        <button onclick="moveItem(${index}, -1)" ${index === 0 ? 'disabled' : ''} title="Subir orden" class="w-6 h-6 rounded-md bg-kirito-surface hover:bg-kirito-border text-slate-400 hover:text-white disabled:opacity-30 flex items-center justify-center text-[10px]">
+                            <i class="fa-solid fa-chevron-up"></i>
+                        </button>
+                        <button onclick="moveItem(${index}, 1)" ${index === state.items.length - 1 ? 'disabled' : ''} title="Bajar orden" class="w-6 h-6 rounded-md bg-kirito-surface hover:bg-kirito-border text-slate-400 hover:text-white disabled:opacity-30 flex items-center justify-center text-[10px]">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <button onclick="removeItem(${index})" title="Quitar archivo" class="w-6 h-6 rounded-md bg-kirito-surface hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center text-[10px] ml-0.5">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+
+                playlistContainer.appendChild(card);
+            });
+        }
+
+        /**
+         * Carga y muestra el tema seleccionado en el visor principal
+         */
+        function selectTopic(index) {
+            if (index < 0 || index >= state.items.length) return;
+
+            // Pausar medios previos antes de cambiar
+            videoPlayer.pause();
+            audioPlayer.pause();
+
+            state.currentIndex = index;
+            const item = state.items[index];
+
+            // Actualizar cabecera del visor
+            currentBadge.textContent = `TEMA ${index + 1} • ${item.ext.toUpperCase()}`;
+            currentTitle.textContent = item.name;
+
+            // Ocultar todas las vistas
+            welcomeScreen.classList.add('hidden');
+            videoWrapper.classList.add('hidden');
+            audioWrapper.classList.add('hidden');
+            textWrapper.classList.add('hidden');
+
+            // Mostrar el reproductor correspondiente
+            if (item.ext === 'mp4') {
+                videoWrapper.classList.remove('hidden');
+                videoWrapper.classList.add('flex');
+                videoPlayer.src = item.url;
+                // Mantener velocidad seleccionada
+                const activeSpeed = document.querySelector('.speed-btn.active');
+                if (activeSpeed) videoPlayer.playbackRate = parseFloat(activeSpeed.dataset.speed);
+            } 
+            else if (item.ext === 'mp3') {
+                audioWrapper.classList.remove('hidden');
+                audioWrapper.classList.add('flex');
+                audioFilenameDisplay.textContent = item.name;
+                audioPlayer.src = item.url;
+                const activeAudioSpeed = document.querySelector('.audio-speed-btn.active');
+                if (activeAudioSpeed) audioPlayer.playbackRate = parseFloat(activeAudioSpeed.dataset.speed);
+            } 
+            else if (item.ext === 'txt') {
+                textWrapper.classList.remove('hidden');
+                textWrapper.classList.add('flex');
+                textContentBox.textContent = item.textContent || '(Archivo de texto vacío)';
+            }
+
+            updateCompleteButtonUI();
+            updateNavigationButtons();
+            renderPlaylist();
+        }
+
+        /**
+         * Reordena elementos hacia arriba o abajo si el usuario desea ajustar el orden
+         */
+        function moveItem(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= state.items.length) return;
+
+            const currentItem = state.items[state.currentIndex];
+            
+            // Intercambiar posiciones
+            const temp = state.items[index];
+            state.items[index] = state.items[newIndex];
+            state.items[newIndex] = temp;
+
+            // Mantener el seguimiento del tema activo
+            if (currentItem) {
+                state.currentIndex = state.items.indexOf(currentItem);
+                const activeItem = state.items[state.currentIndex];
+                currentBadge.textContent = `TEMA ${state.currentIndex + 1} • ${activeItem.ext.toUpperCase()}`;
+            }
+
+            renderPlaylist();
+            updateNavigationButtons();
+        }
+
+        /**
+         * Elimina un archivo específico de la lista
+         */
+        function removeItem(index) {
+            const removed = state.items[index];
+            if (removed.url) URL.revokeObjectURL(removed.url);
+
+            state.items.splice(index, 1);
+
+            if (state.items.length === 0) {
+                resetViewer();
+            } else if (index === state.currentIndex) {
+                const nextIdx = Math.min(index, state.items.length - 1);
+                selectTopic(nextIdx);
+            } else if (index < state.currentIndex) {
+                state.currentIndex--;
+            }
+
+            renderPlaylist();
+            updateProgress();
+            updateNavigationButtons();
+        }
+
+        /**
+         * Restablece el visor cuando no hay archivos
+         */
+        function resetViewer() {
+            videoPlayer.pause();
+            videoPlayer.src = '';
+            audioPlayer.pause();
+            audioPlayer.src = '';
+            state.currentIndex = -1;
+
+            welcomeScreen.classList.remove('hidden');
+            videoWrapper.classList.add('hidden');
+            audioWrapper.classList.add('hidden');
+            textWrapper.classList.add('hidden');
+
+            currentBadge.textContent = 'ESPERANDO';
+            currentTitle.textContent = 'Selecciona o sube un archivo para comenzar';
+            updateCompleteButtonUI();
+            updateNavigationButtons();
+        }
+
+        /**
+         * Actualiza el botón de "Marcar como Estudiado"
+         */
+        function updateCompleteButtonUI() {
+            if (state.currentIndex === -1 || !state.items[state.currentIndex]) {
+                toggleCompleteBtn.disabled = true;
+                toggleCompleteBtn.className = 'px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-kirito-card text-slate-500 border border-kirito-border cursor-not-allowed';
+                toggleCompleteBtn.innerHTML = '<i class="fa-regular fa-circle-check text-sm"></i><span>Marcar como Estudiado</span>';
+                return;
+            }
+
+            toggleCompleteBtn.disabled = false;
+            const isCompleted = state.items[state.currentIndex].completed;
+
+            if (isCompleted) {
+                toggleCompleteBtn.className = 'px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30';
+                toggleCompleteBtn.innerHTML = '<i class="fa-solid fa-circle-check text-sm"></i><span>Tema Estudiado</span>';
+            } else {
+                toggleCompleteBtn.className = 'px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all bg-kirito-card text-slate-200 border border-kirito-border hover:border-kirito-accent hover:text-kirito-accent';
+                toggleCompleteBtn.innerHTML = '<i class="fa-regular fa-circle-check text-sm"></i><span>Marcar como Estudiado</span>';
+            }
+        }
+
+        /**
+         * Actualiza la barra de progreso superior
+         */
+        function updateProgress() {
+            const total = state.items.length;
+            const completed = state.items.filter(i => i.completed).length;
+            const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${percentage}% (${completed}/${total})`;
+        }
+
+        /**
+         * Actualiza los botones de Anterior / Siguiente
+         */
+        function updateNavigationButtons() {
+            const total = state.items.length;
+            if (total === 0 || state.currentIndex === -1) {
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                stepIndicator.textContent = '0 / 0';
+                return;
+            }
+
+            prevBtn.disabled = state.currentIndex <= 0;
+            nextBtn.disabled = state.currentIndex >= total - 1;
+            stepIndicator.textContent = `Tema ${state.currentIndex + 1} de ${total}`;
+        }
+
+        // --- EVENTOS DE INTERFAZ ---
+
+        // Clic y Drag & Drop en zona de carga
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFiles(e.target.files);
+                fileInput.value = ''; // Permitir volver a subir el mismo archivo si se desea
+            }
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-kirito-accent', 'bg-kirito-card/80');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-kirito-accent', 'bg-kirito-card/80');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-kirito-accent', 'bg-kirito-card/80');
+            if (e.dataTransfer.files.length > 0) {
+                handleFiles(e.dataTransfer.files);
+            }
+        });
+
+        // Vaciar toda la lista
+        clearAllBtn.addEventListener('click', () => {
+            state.items.forEach(item => {
+                if (item.url) URL.revokeObjectURL(item.url);
+            });
+            state.items = [];
+            resetViewer();
+            renderPlaylist();
+            updateProgress();
+            showToast('Lista de estudio vaciada.', 'info');
+        });
+
+        // Marcar tema actual como completado
+        toggleCompleteBtn.addEventListener('click', () => {
+            if (state.currentIndex === -1) return;
+            const item = state.items[state.currentIndex];
+            item.completed = !item.completed;
+            
+            updateCompleteButtonUI();
+            renderPlaylist();
+            updateProgress();
+
+            if (item.completed) {
+                showToast(`¡Tema ${state.currentIndex + 1} completado!`, 'success');
+            }
+        });
+
+        // Botones Anterior y Siguiente
+        prevBtn.addEventListener('click', () => {
+            if (state.currentIndex > 0) selectTopic(state.currentIndex - 1);
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (state.currentIndex < state.items.length - 1) selectTopic(state.currentIndex + 1);
+        });
+
+        // Controles de velocidad de Video
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.speed-btn').forEach(b => {
+                    b.classList.remove('active', 'bg-kirito-accent', 'text-kirito-bg', 'font-bold');
+                    b.classList.add('bg-kirito-surface', 'text-slate-300');
+                });
+                btn.classList.add('active', 'bg-kirito-accent', 'text-kirito-bg', 'font-bold');
+                btn.classList.remove('bg-kirito-surface', 'text-slate-300');
+                videoPlayer.playbackRate = parseFloat(btn.dataset.speed);
+            });
+        });
+
+        // Controles de velocidad y animación de Audio
+        document.querySelectorAll('.audio-speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.audio-speed-btn').forEach(b => {
+                    b.classList.remove('active', 'bg-purple-500', 'text-white', 'font-bold');
+                    b.classList.add('bg-kirito-surface', 'text-slate-300');
+                });
+                btn.classList.add('active', 'bg-purple-500', 'text-white', 'font-bold');
+                btn.classList.remove('bg-kirito-surface', 'text-slate-300');
+                audioPlayer.playbackRate = parseFloat(btn.dataset.speed);
+            });
+        });
+
+        audioPlayer.addEventListener('play', () => audioVisualizer.classList.remove('paused'));
+        audioPlayer.addEventListener('pause', () => audioVisualizer.classList.add('paused'));
+        audioPlayer.addEventListener('ended', () => audioVisualizer.classList.add('paused'));
+
+        // Controles del Lector TXT (Tamaño de fuente y modo cálido)
+        document.getElementById('font-increase').addEventListener('click', () => {
+            if (state.fontSize < 26) {
+                state.fontSize += 2;
+                textContentBox.style.fontSize = `${state.fontSize}px`;
+            }
+        });
+
+        document.getElementById('font-decrease').addEventListener('click', () => {
+            if (state.fontSize > 12) {
+                state.fontSize -= 2;
+                textContentBox.style.fontSize = `${state.fontSize}px`;
+            }
+        });
+
+        document.getElementById('sepia-toggle').addEventListener('click', () => {
+            state.warmReadingMode = !state.warmReadingMode;
+            if (state.warmReadingMode) {
+                textContentBox.classList.remove('bg-[#0d1320]', 'text-slate-200');
+                textContentBox.classList.add('bg-[#f4ecd8]', 'text-stone-900');
+            } else {
+                textContentBox.classList.remove('bg-[#f4ecd8]', 'text-stone-900');
+                textContentBox.classList.add('bg-[#0d1320]', 'text-slate-200');
+            }
+        });
+
+        // Bloc de Notas: Guardado automático en localStorage, Copiar y Descargar
+        const SAVED_NOTES_KEY = 'kirito_study_hub_notes';
+        studyNotes.value = localStorage.getItem(SAVED_NOTES_KEY) || '';
+
+        studyNotes.addEventListener('input', () => {
+            localStorage.setItem(SAVED_NOTES_KEY, studyNotes.value);
+        });
+
+        copyNotesBtn.addEventListener('click', () => {
+            if (!studyNotes.value.trim()) {
+                showToast('No hay notas para copiar.', 'info');
+                return;
+            }
+            studyNotes.select();
+            document.execCommand('copy');
+            showToast('Apuntes copiados al portapapeles.', 'success');
+        });
+
+        downloadNotesBtn.addEventListener('click', () => {
+            if (!studyNotes.value.trim()) {
+                showToast('Escribe algunos apuntes antes de descargar.', 'info');
+                return;
+            }
+            const blob = new Blob([studyNotes.value], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Mis_Apuntes_Estudio.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Apuntes descargados como .txt', 'success');
+        });
+    </script>
+</body>
+</html>
